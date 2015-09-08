@@ -5,25 +5,38 @@
  */
 package server;
 
+import client.Client;
+import handler.ClientHandler;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import protocol.Protocol;
-import protocol.TestProtocol;
 
 /**
  *
  * @author sasho
  */
-public class ServerThread extends Thread {
+public class ServerThread extends Thread implements Observer {
 
     private Socket clientSocket = null;
+    private final ClientHandler clientHandler;
+    private final HashMap<String, String> userList;
+    private PrintWriter out;
+    private BufferedReader in;
+    private BufferedReader stdIn;
 
-    public ServerThread(Socket socket) {
+    public ServerThread(Socket clientSocket, ClientHandler clientHandler, HashMap<String, String> userList) {
 
-        this.clientSocket = socket;
+        this.clientSocket = clientSocket;
+        this.userList = userList;
+        this.clientHandler = clientHandler;
     }
 
     @Override
@@ -31,50 +44,43 @@ public class ServerThread extends Thread {
 
         try {
 
-            PrintWriter out
-                    = new PrintWriter(clientSocket.getOutputStream(), true);
-            BufferedReader in = new BufferedReader(
-                    new InputStreamReader(clientSocket.getInputStream()));
+            out = new PrintWriter(clientSocket.getOutputStream(), true);
+            in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            stdIn = new BufferedReader(new InputStreamReader(System.in));
 
-            Protocol chatProtocol = new Protocol();
+            String inputLine;
+            String outputLine;
 
-            String input, output;
+            outputLine = clientHandler.getUserList(userList);
+            out.println(outputLine);
 
+            clientHandler.registerNewObserver(this);
             
-            TestProtocol tp = new TestProtocol();
-            output = tp.processInput(null);
-            out.println(output);
+            while ((inputLine = in.readLine()) != null) {
 
-            while ((input = in.readLine()) != null) {
-                output = tp.processInput(input);
-                out.println(output);
-                if (output.equals("Bye")) {
+                outputLine = clientHandler.processClientMessage(inputLine);
+                if (outputLine.equals(Protocol.STOP)) {
                     break;
+                } 
+                else if (outputLine.startsWith(Protocol.MSG)) {                   
+                        clientHandler.sendMessage(outputLine);
+                }
+                else{
+                    out.println(outputLine);//print welcome message
                 }
             }
-            
-            
-            
-            
-            
-            
-            
-            
-            //process the input
-            //output = chatProtocol.processInput(input);
-            //out.println(output);
-            /*
-             while ((input = in.readLine()) != null) {
-             output = chatProtocol.processInput(input);
-             out.println(output);
-             if (outputLine.equals(Protocol.STOP)) {
-             break;
-             }
-             }
-             */
             clientSocket.close();
-        } catch (IOException e) {
+        } catch (IOException ex) {
+            Logger.getLogger(Client.class.getName()).log(Level.SEVERE, null, ex);
         }
+
+    }
+
+    @Override
+    public void update(Observable o, Object arg) {
+
+        out.println(arg.toString());
+
     }
 
 }

@@ -5,8 +5,11 @@
  */
 package server;
 
+import handler.ClientHandler;
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  *
@@ -14,14 +17,21 @@ import java.net.ServerSocket;
  */
 public class Server {
     
+   private static HashMap<String, String> userList;
+   private static ClientHandler clientHandler;
+    
     public static void main(String[] args) {
         
-        if (args.length != 1) {
-            System.err.println("<port number> not found");
-            System.exit(1);
-        }
+//        if (args.length != 1) {
+//            System.err.println("<port number> not found");
+//            System.exit(1);
+//        }
+//        
+//        int portNumber = Integer.parseInt(args[0]);
+        int portNumber = 8112;
         
-        int portNumber = Integer.parseInt(args[0]);
+        userList = new HashMap<String, String>();
+        clientHandler = new ClientHandler();
         
         boolean listening = true;
         
@@ -30,15 +40,14 @@ public class Server {
             ServerSocket serverSocket = new ServerSocket(portNumber);
             
             while (listening) {
-                new ServerThread(serverSocket.accept()).start();
+                
+                new ServerThread(serverSocket.accept(), clientHandler, userList).start();
             }
             
         } catch (IOException e) {
             System.err.println("Could not listen on port " + portNumber);
             System.exit(-1);
         }
-        
-        
         
     }
     
